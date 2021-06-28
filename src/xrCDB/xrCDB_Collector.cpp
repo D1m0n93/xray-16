@@ -115,7 +115,7 @@ void Collector::calc_adjacency(xr_vector<u32>& dest)
 #if 1
     VERIFY(faces.size() < 65536);
     const u32 edge_count = faces.size() * 3;
-#ifdef _EDITOR
+#if 1
     xr_vector<edge> _edges(edge_count);
     edge* edges = &*_edges.begin();
 #else

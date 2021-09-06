@@ -30,10 +30,47 @@ void CLevelGraph::Initialize(const char* filePath)
     m_reader = FS.r_open(filePath);
     // m_header & data
     m_header = (CHeader*)m_reader->pointer();
-    ASSERT_XRAI_VERSION_MATCH(header().version(), "Level graph version mismatch");
     m_reader->advance(sizeof(CHeader));
     const auto& box = header().box();
-    m_nodes = xr_new<CLevelGraphManager>(m_reader, header().vertex_count(), header().version());
+    switch (header().version())
+	{
+		case 10: {
+		NodeCompressed_v10* temp = (NodeCompressed_v10*)m_reader->pointer();
+		u32 count = header().vertex_count();
+		m_old_nodes.resize(count);
+		for (u32 i = 0; i != count; i++) {
+			NodeCompressed& node = m_old_nodes[i];
+			std::memcpy((char*)&node.high, (char*)&temp->high, sizeof(temp->high) + sizeof(temp->low) + sizeof(temp->plane));
+			node.link(0, temp->link(0));
+			node.link(1, temp->link(1));
+			node.link(2, temp->link(2));
+			node.link(3, temp->link(3));
+			node.light(temp->light());
+			node.p.m_xz = temp->p.xz();
+			node.p.m_y = temp->p.y();
+			temp++;
+		}
+		m_nodes = (CVertex*)&m_old_nodes[0];
+	} break;
+	case 11: {
+		NodeCompressed11* temp = (NodeCompressed11*)m_reader->pointer();
+		u32 count = header().vertex_count();
+		m_old_nodes.resize(count);
+		for (u32 i = 0; i != count; i++) {
+			NodeCompressed& node = m_old_nodes[i];
+			std::memcpy(
+				(char*)&node, (char*)&temp, sizeof(temp->data) +  sizeof(temp->high) + sizeof(temp->low) + sizeof(temp->plane));
+			node.p.m_xz = temp->p.xz();
+			node.p.m_y = temp->p.y();
+			temp++;
+		}
+		m_nodes = (CVertex*)&m_old_nodes[0];
+	} break;
+	case XRAI_CURRENT_VERSION:
+		m_nodes = (CVertex*)m_reader->pointer();
+		break;
+	default:
+		R_ASSERT2(false, ("header().version() [" + std::to_string(header().version()) + "] not supported").c_str());
     m_row_length = iFloor((box.vMax.z - box.vMin.z) / header().cell_size() + EPS_L + 1.5f);
     m_column_length = iFloor((box.vMax.x - box.vMin.x) / header().cell_size() + EPS_L + 1.5f);
     m_access_mask.assign(header().vertex_count(), true);

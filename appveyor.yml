@@ -7,17 +7,12 @@ skip_tags: true
 
 image:
 - Visual Studio 2019
-- Ubuntu
 
 configuration:
-- Debug
-- Mixed
 - Release
-- Release Master Gold
 
 platform:
 - x64
-- x86
 
 branches:
   except:

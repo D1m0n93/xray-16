@@ -510,6 +510,8 @@ const u32 XRCL_PRODUCTION_VERSION = 14; // output
 const u32 CFORM_CURRENT_VERSION = 4;
 const u32 MAX_AI_NODES = NodeCompressed::LINK_MASK_0;
 const u32 XRAI_CURRENT_VERSION = 12;
+using NodeCompressed =	NodeCompressed12;
+using NodePosition =	NodePosition12;
 enum xrAI_Versions
 {
     XRAI_VERSION_SOC = 8,
@@ -519,6 +521,7 @@ enum xrAI_Versions
     XRAI_VERSION_ALLOWED = XRAI_VERSION_SOC,
     XRAI_VERSION_OPENXRAY = XRAI_VERSION_COP,
 
+    XRAI_CURRENT_VERSION = XRAI_VERSION_OPENXRAY
 };
 
 #define ASSERT_XRAI_VERSION_MATCH(version, description)\

@@ -13,7 +13,7 @@ inline void CGameGraph::Initialize(IReader& stream, bool own)
     ownReader = own;
     m_reader = &stream;
     m_header.load(m_reader);
-    R_ASSERT2 (header().version() == XRAI_CURRENT_VERSION || header().version() == 10,"Graph version mismatch!");
+    ASSERT_XRAI_VERSION_MATCH(header().version(), "Game graph version mismatch!");
     m_nodes = (CGameVertex*)m_reader->pointer();
     m_current_level_some_vertex_id = _GRAPH_ID(-1);
     m_enabled.assign(header().vertex_count(), true);

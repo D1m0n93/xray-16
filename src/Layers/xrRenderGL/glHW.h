@@ -6,6 +6,8 @@
 #include "SDL_syswm.h"
 
 class CHW
+    : public pureAppActivate,
+      public pureAppDeactivate
 {
 public:
     CHW();
@@ -29,6 +31,10 @@ public:
     void EndScene();
     void Present();
 
+public:
+    void OnAppActivate() override;
+    void OnAppDeactivate() override;
+
 private:
     void UpdateViews();
     bool ThisInstanceIsGlobal() const;
@@ -42,10 +48,9 @@ public:
 
     u32 BackBufferCount{};
     u32 CurrentBackBuffer{};
-
-    CHW* pDevice;
-    GLuint pPP;
-    GLuint pFB;
+    
+    GLuint pPP{};
+    GLuint pFB{};
 
     SDL_Window* m_window{};
     SDL_Window* m_helper_window{};

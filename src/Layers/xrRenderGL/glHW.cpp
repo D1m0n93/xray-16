@@ -16,9 +16,41 @@ void CALLBACK OnDebugCallback(GLenum /*source*/, GLenum /*type*/, GLuint id, GLe
         Log(message, id);
 }
 
-CHW::CHW() : pDevice(this), pPP(0), pFB(0) {}
+CHW::CHW()
+{
+    if (!ThisInstanceIsGlobal())
+        return;
 
-CHW::~CHW() {}
+    Device.seqAppActivate.Add(this);
+    Device.seqAppDeactivate.Add(this);
+}
+
+CHW::~CHW()
+{
+    if (!ThisInstanceIsGlobal())
+        return;
+
+    Device.seqAppActivate.Remove(this);
+    Device.seqAppDeactivate.Remove(this);
+}
+
+void CHW::OnAppActivate()
+{
+    if (m_window)
+    {
+        SDL_RestoreWindow(m_window);
+    }
+}
+
+void CHW::OnAppDeactivate()
+{
+    if (m_window)
+    {
+        if (psDeviceMode.WindowStyle == rsFullscreen || psDeviceMode.WindowStyle == rsFullscreenBorderless)
+            SDL_MinimizeWindow(m_window);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -225,8 +257,8 @@ std::pair<u32, u32> CHW::GetSurfaceSize()
 {
     return
     {
-        psCurrentVidMode[0],
-        psCurrentVidMode[1]
+        psDeviceMode.Width,
+        psDeviceMode.Height
     };
 }
 

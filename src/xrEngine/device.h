@@ -71,11 +71,14 @@ public:
     // Real game window resolution
     SDL_Rect m_rcWindowClient;
 
+    // Main window
+    SDL_Window* m_sdlWnd;
+
     u32 dwPrecacheFrame;
     bool b_is_Ready;
     bool b_is_Active;
+    bool b_is_InFocus;
     bool IsAnselActive;
-    bool AllowWindowDrag; // For windowed mode
 
     // Engine flow-control
     u32 dwFrame;
@@ -113,6 +116,8 @@ protected:
     CTimer_paused Timer;
     CTimer_paused TimerGlobal;
 
+    bool m_allowWindowDrag; // For windowed mode
+
 public:
     // Registrators
     MessageRegistry<pureRender> seqRender;
@@ -121,8 +126,6 @@ public:
     MessageRegistry<pureAppStart> seqAppStart;
     MessageRegistry<pureAppEnd> seqAppEnd;
     MessageRegistry<pureFrame> seqFrame;
-
-    SDL_Window* m_sdlWnd;
 };
 
 class ENGINE_API CRenderDeviceBase : public IRenderDevice, public CRenderDeviceData
@@ -225,7 +228,6 @@ public:
     void overdrawEnd();
 
     // Mode control
-    void DumpFlags();
     IC CTimer_paused* GetTimerGlobal() { return &TimerGlobal; }
     u32 TimerAsync() { return TimerGlobal.GetElapsed_ms(); }
     u32 TimerAsync_MMT() { return TimerMM.GetElapsed_ms() + Timer_MM_Delta; }
@@ -233,7 +235,6 @@ public:
 private:
     // Creation & Destroying
     void CreateInternal();
-    void ResetInternal(bool precache = true);
 
 public:
     void Create();
@@ -242,14 +243,21 @@ public:
     void Destroy(void);
     void Reset(bool precache = true);
 
-    void UpdateWindowProps(const bool windowed);
+    void UpdateWindowProps();
     void UpdateWindowRects();
-    void SelectResolution(const bool windowed);
+    void SelectResolution(bool windowed);
 
     void Initialize(void);
     void ShutDown(void);
+
+    void FillVideoModes();
+    void CleanupVideoModes();
+
     virtual const RenderDeviceStatictics& GetStats() const override { return stats; }
     virtual void DumpStatistics(class IGameFont& font, class IPerformanceAlert* alert) override;
+
+    void SetWindowDraggable(bool draggable);
+    bool IsWindowDraggable() const { return m_allowWindowDrag; }
 
     SDL_Window* GetApplicationWindow() override;
     void DisableFullscreen() override;
@@ -355,7 +363,6 @@ class CDeviceResetNotifier : public pureDeviceReset
 public:
     CDeviceResetNotifier(const int prio = REG_PRIORITY_NORMAL) { Device.seqDeviceReset.Add(this, prio); }
     virtual ~CDeviceResetNotifier() { Device.seqDeviceReset.Remove(this); }
-    void OnDeviceReset() override {}
 };
 
 class CUIResetNotifier : public pureUIReset
@@ -370,8 +377,6 @@ public:
     {
         Device.seqUIReset.Remove(this);
     }
-
-    void OnUIReset() override {}
 };
 
 #endif

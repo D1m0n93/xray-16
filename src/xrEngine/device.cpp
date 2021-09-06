@@ -42,8 +42,6 @@ ENGINE_API bool g_bRendering = false;
 const u32 CRenderDeviceData::MaximalWaitTime = 16;
 constexpr size_t MAX_WINDOW_EVENTS = 32;
 
-extern int ps_always_active;
-
 bool g_bLoaded = false;
 ref_light precache_light = 0;
 
@@ -103,7 +101,7 @@ void CRenderDevice::RenderEnd(void)
             Msg("* End of synchronization A[%d] R[%d]", b_is_Active, b_is_Ready);
             FIND_CHUNK_COUNTER_FLUSH();
             CheckPrivilegySlowdown();
-            if (g_pGamePersistent->GameType() == 1 && !ps_always_active) // haCk
+            if (g_pGamePersistent->GameType() == 1 && !psDeviceFlags.test(rsAlwaysActive)) // haCk
             {
                 Uint32 flags = SDL_GetWindowFlags(m_sdlWnd);
                 if ((flags & SDL_WINDOW_INPUT_FOCUS) == 0)
@@ -116,7 +114,7 @@ void CRenderDevice::RenderEnd(void)
     // Present goes here, so call OA Frame end.
 #if !defined(XR_PLATFORM_LINUX)
     if (g_SASH.IsBenchmarkRunning())
-        g_SASH.DisplayFrame(Device.fTimeGlobal);
+        g_SASH.DisplayFrame(fTimeGlobal);
 #endif
     GEnv.Render->End();
 
@@ -198,7 +196,7 @@ bool CRenderDevice::BeforeFrame()
     }
 
 #if !defined(XR_PLATFORM_LINUX)
-    if (!Device.dwPrecacheFrame && !g_SASH.IsBenchmarkRunning() && g_bLoaded)
+    if (!dwPrecacheFrame && !g_SASH.IsBenchmarkRunning() && g_bLoaded)
         g_SASH.StartBenchmark();
 #endif
 
@@ -288,7 +286,7 @@ void CRenderDevice::ProcessFrame()
     if (GEnv.isDedicatedServer)
         updateDelta = 1000 / g_svDedicateServerUpdateReate;
 
-    else if (Device.Paused())
+    else if (Paused())
         updateDelta = 16; // 16 ms, ~60 FPS max while paused
 
     if (frameTime < updateDelta)
@@ -329,6 +327,30 @@ void CRenderDevice::message_loop()
 
             switch (event.type)
             {
+#if SDL_VERSION_ATLEAST(2, 0, 9)
+            case SDL_DISPLAYEVENT:
+            {
+                switch (event.display.type)
+                {
+                case SDL_DISPLAYEVENT_ORIENTATION:
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+                case SDL_DISPLAYEVENT_CONNECTED:
+                case SDL_DISPLAYEVENT_DISCONNECTED:
+#endif
+                    CleanupVideoModes();
+                    FillVideoModes();
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+                    if (event.display.display == psDeviceMode.Monitor && event.display.type != SDL_DISPLAYEVENT_CONNECTED)
+#else
+                    if (event.display.display == psDeviceMode.Monitor)
+#endif
+                        Reset();
+                    else
+                        UpdateWindowProps();
+                    break;
+                }
+            }
+#endif
             case SDL_WINDOWEVENT:
             {
                 switch (event.window.event)
@@ -339,14 +361,13 @@ void CRenderDevice::message_loop()
 
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                 {
-                    if (!psDeviceFlags.is(rsFullscreen))
+                    if (psDeviceMode.WindowStyle != rsFullscreen)
                     {
-                        if (psCurrentVidMode[0] == event.window.data1 && psCurrentVidMode[1] == event.window.data2)
+                        if (psDeviceMode.Width == event.window.data1 && psDeviceMode.Height == event.window.data2)
                             break; // we don't need to reset device if resolution wasn't really changed
 
-                        string32 buff;
-                        xr_sprintf(buff, sizeof(buff), "vid_mode %dx%d", event.window.data1, event.window.data2);
-                        Console->Execute(buff);
+                        psDeviceMode.Width = event.window.data1;
+                        psDeviceMode.Height = event.window.data2;
 
                         Reset();
                     }
@@ -418,13 +439,12 @@ void CRenderDevice::Run()
     seqAppStart.Process();
 
     splash::hide();
-    SDL_HideWindow(m_sdlWnd);
+    SDL_HideWindow(m_sdlWnd); // workaround for SDL bug
+    UpdateWindowProps();
     SDL_ShowWindow(m_sdlWnd);
     SDL_RaiseWindow(m_sdlWnd);
-    UpdateWindowProps(!psDeviceFlags.is(rsFullscreen));
     if (GEnv.isDedicatedServer || strstr(Core.Params, "-center_screen"))
         SDL_SetWindowPosition(m_sdlWnd, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    OnWM_Activate(1, 0);
 
     // Message cycle
     message_loop();
@@ -481,7 +501,7 @@ void CRenderDevice::FrameMove()
     stats.EngineTotal.Begin();
     // TODO: HACK to test loading screen.
     // if(!g_bLoaded)
-    Device.seqFrame.Process();
+    seqFrame.Process();
     g_bLoaded = true;
     // else
     // seqFrame.Process(rp_Frame);
@@ -557,20 +577,20 @@ void CRenderDevice::OnWM_Activate(WPARAM wParam, LPARAM /*lParam*/)
     else
         pInput->GrabInput(false);
 
-    const bool isGameActive = ps_always_active || isWndActive;
+    b_is_Active = isWndActive || psDeviceFlags.test(rsAlwaysActive);
 
-    if (isGameActive != Device.b_is_Active)
+    if (isWndActive != b_is_InFocus)
     {
-        Device.b_is_Active = isGameActive;
-        if (Device.b_is_Active)
+        b_is_InFocus = isWndActive;
+        if (b_is_InFocus)
         {
-            Device.seqAppActivate.Process();
+            seqAppActivate.Process();
             app_inactive_time += TimerMM.GetElapsed_ms() - app_inactive_time_start;
         }
         else
         {
             app_inactive_time_start = TimerMM.GetElapsed_ms();
-            Device.seqAppDeactivate.Process();
+            seqAppDeactivate.Process();
         }
     }
 }

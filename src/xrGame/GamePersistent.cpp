@@ -849,6 +849,9 @@ static BOOL bEntryFlag = TRUE;
 
 void CGamePersistent::OnAppActivate()
 {
+    if (psDeviceFlags.test(rsAlwaysActive))
+        return;
+
     bool bIsMP = (g_pGameLevel && Level().game && GameID() != eGameIDSingle);
     bIsMP &= !Device.Paused();
 
@@ -862,7 +865,7 @@ void CGamePersistent::OnAppActivate()
 
 void CGamePersistent::OnAppDeactivate()
 {
-    if (!bEntryFlag)
+    if (!bEntryFlag || psDeviceFlags.test(rsAlwaysActive))
         return;
 
     bool bIsMP = (g_pGameLevel && Level().game && GameID() != eGameIDSingle);

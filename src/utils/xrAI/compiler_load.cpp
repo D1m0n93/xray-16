@@ -248,7 +248,8 @@ void xrLoad(LPCSTR name, bool draft_mode)
         R_ASSERT2(F, "There is no file 'build.aimap'!");
 
         R_ASSERT(F->open_chunk(E_AIMAP_CHUNK_VERSION));
-        R_ASSERT(F->r_u16() == E_AIMAP_VERSION);
+        u16 version = F->r_u16();
+        R_ASSERT(version == E_AIMAP_VERSION || version == 1);
 
         Fbox LevelBB;
 
@@ -280,7 +281,7 @@ void xrLoad(LPCSTR name, bool draft_mode)
 
             for (size_t j = 0; j < 4; ++j)
             {
-                F->r(&id, 3);
+                F->r(&id, 4);
                 g_nodes[i].n[j] = (*LPDWORD(&id)) & 0x00ffffff;
             }
 

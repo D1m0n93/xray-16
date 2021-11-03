@@ -8,6 +8,7 @@
 #include "Layers/xrRender/ETextureParams.h"
 
 // base patch used all the time up to merging
+const u32 InvalidNode_v1 = 0x00ffffff;
 const u32 InvalidNode = (1 << 24) - 1;
 const u32 UnkonnectedNode = 0xfffffff0;
 const u16 InvalidSector = 0xff;
